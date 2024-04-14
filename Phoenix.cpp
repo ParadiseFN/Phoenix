@@ -69,27 +69,31 @@ DWORD StdoutThread(LPVOID pi) {
     PROCESS_INFORMATION processInfo = *(PROCESS_INFORMATION *) pi;
     char chBuf[4096];
     DWORD dwRead;
+    bool check = true;
     while (true) {
         bool bSuccess = ReadFile(fnStdoutRd, chBuf, 4096, &dwRead, NULL);
         if (!bSuccess) break;
         if (dwRead == 0) continue;
-        auto s = std::string(chBuf);
-        if (s.contains("CreatingParty")) { // proper !
-            if (!Inject(processInfo.hProcess, config["gameserver"].find(":\\") != std::string::npos ? config["gameserver"] : std::string((char*)p) + "\\" + config["gameserver"])) {
-                TerminateProcess(processInfo.hProcess, 0);
-                CloseHandle(processInfo.hProcess);
-                CloseHandle(processInfo.hThread);
-                //goto end;
-                goEnd = true;
+        if (check) {
+            auto s = std::string(chBuf);
+            if (s.contains("CreatingParty")) { // proper !
+                if (!Inject(processInfo.hProcess, config["gameserver"].find(":\\") != std::string::npos ? config["gameserver"] : std::string((char*)p) + "\\" + config["gameserver"])) {
+                    TerminateProcess(processInfo.hProcess, 0);
+                    CloseHandle(processInfo.hProcess);
+                    CloseHandle(processInfo.hThread);
+                    //goto end;
+                    goEnd = true;
+                }
+                check = false;
             }
-        }
-        else if (s.contains("[UOnlineAccountCommon::ForceLogout] ForceLogout (")) {
-            auto logoutReasonStart = s.find("reason \"") + 8;
-            auto logoutReasonEnd = s.substr(logoutReasonStart).find("\"");
-            printf("Failed to login: %s\n", s.substr(logoutReasonStart, logoutReasonEnd).c_str());
-            TerminateProcess(processInfo.hProcess, 0);
+            else if (s.contains("[UOnlineAccountCommon::ForceLogout] ForceLogout (")) {
+                auto logoutReasonStart = s.find("reason \"") + 8;
+                auto logoutReasonEnd = s.substr(logoutReasonStart).find("\"");
+                printf("Failed to login: %s\n", s.substr(logoutReasonStart, logoutReasonEnd).c_str());
+                TerminateProcess(processInfo.hProcess, 0);
 
-            break;
+                check = false;
+            }
         }
     }
     return 0;   
