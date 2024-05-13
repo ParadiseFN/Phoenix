@@ -9,6 +9,7 @@
 #include <psapi.h>
 #include <TlHelp32.h>
 #include "starfallPayload.h"
+#include "nullrhiPatch.h"
 #include <thread>
 
 std::vector<std::string> split(const std::string& s, char delim) {
@@ -165,6 +166,11 @@ int main()
     file.write((const char *) Starfall, sizeof(Starfall));
     file.close();
 
+    std::string nullrhi = std::string(lpTempPathBuffer) + "\\NullrhiPatch.dll";
+    std::ofstream nullrhiF(nullrhi.c_str(), std::ios::binary);
+    nullrhiF.write((const char*)NullrhiPatch, sizeof(NullrhiPatch));
+    nullrhiF.close();
+
     killProcessByName("FortniteClient-Win64-Shipping.exe");
     killProcessByName("FortniteClient-Win64-Shipping_EAC.exe");
     killProcessByName("FortniteLauncher.exe");
@@ -192,7 +198,29 @@ int main()
         }
         std::string params = fn + "\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe -epicapp=Fortnite -epicenv=Prod -epicportal -skippatchcheck -nobe -fromfl=eac -fltoken=3db3ba5dcbd2e16703f3978d -caldera=eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJhY2NvdW50X2lkIjoiYmU5ZGE1YzJmYmVhNDQwN2IyZjQwZWJhYWQ4NTlhZDQiLCJnZW5lcmF0ZWQiOjE2Mzg3MTcyNzgsImNhbGRlcmFHdWlkIjoiMzgxMGI4NjMtMmE2NS00NDU3LTliNTgtNGRhYjNiNDgyYTg2IiwiYWNQcm92aWRlciI6IkVhc3lBbnRpQ2hlYXQiLCJub3RlcyI6IiIsImZhbGxiYWNrIjpmYWxzZX0.VAWQB67RTxhiWOxx7DBjnzDnXyyEnX7OljJm-j2d88G_WgwQ9wrE6lwMEHZHjBd1ISJdUO1UVUqkfLdU5nofBQ -nullrhi -nosound -nosplash";
         PROCESS_INFORMATION processInfo;
-        CreateProcessA((fn + "\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe").c_str(), (char*)(params + " -AUTH_LOGIN=" + config["email"] + " -AUTH_PASSWORD=" + config["password"] + " -AUTH_TYPE=epic -backend=" + config["backend"]).c_str(), NULL, NULL, true, 0, nullptr, fn.c_str(), &info, &processInfo);
+        CreateProcessA((fn + "\\FortniteGame\\Binaries\\Win64\\FortniteClient-Win64-Shipping.exe").c_str(), (char*)(params + " -AUTH_LOGIN=" + config["email"] + " -AUTH_PASSWORD=" + config["password"] + " -AUTH_TYPE=epic -backend=" + config["backend"]).c_str(), NULL, NULL, true, CREATE_SUSPENDED, nullptr, fn.c_str(), &info, &processInfo);
+        if (!Inject(processInfo.hProcess, nullrhi)) {
+            TerminateProcess(processInfo.hProcess, 0);
+            CloseHandle(processInfo.hProcess);
+            CloseHandle(processInfo.hThread);
+            goto end;
+        }
+
+        HANDLE tsnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        THREADENTRY32 ent;
+        ent.dwSize = sizeof(THREADENTRY32);
+        Thread32First(tsnap, &ent);
+
+        while (Thread32Next(tsnap, &ent)) {
+            if (ent.th32OwnerProcessID == processInfo.dwProcessId) {
+                HANDLE thr = OpenThread(THREAD_ALL_ACCESS, FALSE, ent.th32ThreadID);
+
+                ResumeThread(thr);
+                CloseHandle(thr);
+            }
+        }
+        CloseHandle(tsnap);
+
         if (!Inject(processInfo.hProcess, goofy)) {
             TerminateProcess(processInfo.hProcess, 0);
             CloseHandle(processInfo.hProcess);

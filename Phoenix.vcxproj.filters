@@ -15,12 +15,15 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="PluhAutoHost.cpp">
+    <ClCompile Include="Phoenix.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="starfallPayload.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="nullrhiPatch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

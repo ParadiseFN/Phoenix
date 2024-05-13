@@ -132,6 +132,7 @@
     <ClCompile Include="Phoenix.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="nullrhiPatch.h" />
     <ClInclude Include="starfallPayload.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
